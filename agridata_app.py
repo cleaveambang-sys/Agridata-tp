@@ -260,31 +260,27 @@ elif page == "📋 Saisie des données":
 
     with tab1:
         st.markdown('<div class="section-header">Nouveau relevé de rendement</div>', unsafe_allow_html=True)
-        with st.form("form_rendement", clear_on_submit=True):
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                date_r = st.date_input("Date de récolte", value=date.today())
-                region_r = st.selectbox("Région", ["Centre","Littoral","Ouest","Nord","Sud","Adamaoua","Est","Nord-Ouest","Sud-Ouest","Extrême-Nord"])
-            with col2:
-                culture = st.selectbox("Type de culture", ["Maïs","Cacao","Café","Manioc","Plantain","Sorgho","Mil","Riz","Arachide","Coton","Autre"])
-                superficie = st.number_input("Superficie (ha)", min_value=0.01, max_value=10000.0, value=1.0, step=0.1)
-            with col3:
-                production = st.number_input("Production (tonnes)", min_value=0.01, max_value=100000.0, value=2.0, step=0.1)
-                qualite = st.selectbox("Qualité de la récolte", ["Excellente","Bonne","Moyenne","Faible"])
-
-            remarques = st.text_area("Remarques / observations", height=80, placeholder="Conditions particulières, incidents, etc.")
-
-            submitted = st.form_submit_button("💾 Enregistrer le relevé", use_container_width=True)
-            if submitted:
-                rendement_calc = round(production / superficie, 3) if superficie > 0 else 0
-                conn = get_conn()
-                conn.execute("""INSERT INTO rendements (date,region,culture,superficie_ha,production_tonnes,rendement_t_ha,qualite,remarques)
-                    VALUES (?,?,?,?,?,?,?,?)""",
-                    (str(date_r), region_r, culture, superficie, production, rendement_calc, qualite, remarques))
-                conn.commit()
-                conn.close()
-                st.markdown(f'<div class="alert-success">✅ Relevé enregistré ! Rendement calculé : <strong>{rendement_calc} t/ha</strong></div>', unsafe_allow_html=True)
-                st.rerun()
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            date_r = st.date_input("Date de récolte", value=date.today(), key="date_r")
+            region_r = st.selectbox("Région", ["Centre","Littoral","Ouest","Nord","Sud","Adamaoua","Est","Nord-Ouest","Sud-Ouest","Extrême-Nord"], key="region_r")
+        with col2:
+            culture = st.selectbox("Type de culture", ["Maïs","Cacao","Café","Manioc","Plantain","Sorgho","Mil","Riz","Arachide","Coton","Autre"], key="culture_r")
+            superficie = st.number_input("Superficie (ha)", min_value=0.01, max_value=10000.0, value=1.0, step=0.1, key="sup_r")
+        with col3:
+            production = st.number_input("Production (tonnes)", min_value=0.01, max_value=100000.0, value=2.0, step=0.1, key="prod_r")
+            qualite = st.selectbox("Qualité de la récolte", ["Excellente","Bonne","Moyenne","Faible"], key="qual_r")
+        remarques = st.text_area("Remarques / observations", height=80, placeholder="Conditions particulières, incidents, etc.", key="rem_r")
+        if st.button("💾 Enregistrer le relevé", use_container_width=True, key="btn_r"):
+            rendement_calc = round(production / superficie, 3) if superficie > 0 else 0
+            conn = get_conn()
+            conn.execute("""INSERT INTO rendements (date,region,culture,superficie_ha,production_tonnes,rendement_t_ha,qualite,remarques)
+                VALUES (?,?,?,?,?,?,?,?)""",
+                (str(date_r), region_r, culture, superficie, production, rendement_calc, qualite, remarques))
+            conn.commit()
+            conn.close()
+            st.success(f"✅ Relevé enregistré ! Rendement calculé : {rendement_calc} t/ha")
+            st.rerun()
 
         if len(df_r) > 0:
             st.markdown('<div class="section-header">Derniers enregistrements</div>', unsafe_allow_html=True)
@@ -295,32 +291,29 @@ elif page == "📋 Saisie des données":
 
     with tab2:
         st.markdown('<div class="section-header">Nouveau relevé météorologique</div>', unsafe_allow_html=True)
-        with st.form("form_meteo", clear_on_submit=True):
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                date_m = st.date_input("Date du relevé", value=date.today(), key="date_m")
-                region_m = st.selectbox("Région", ["Centre","Littoral","Ouest","Nord","Sud","Adamaoua","Est","Nord-Ouest","Sud-Ouest","Extrême-Nord"], key="reg_m")
-                station = st.text_input("Station météo", placeholder="Ex: Station de Yaoundé")
-            with col2:
-                temp_min = st.number_input("Temp. min (°C)", min_value=-10.0, max_value=50.0, value=20.0, step=0.1)
-                temp_max = st.number_input("Temp. max (°C)", min_value=-10.0, max_value=55.0, value=30.0, step=0.1)
-                temp_moy = st.number_input("Temp. moy (°C)", min_value=-10.0, max_value=55.0, value=25.0, step=0.1)
-            with col3:
-                precipitation = st.number_input("Précipitations (mm)", min_value=0.0, max_value=500.0, value=50.0, step=0.5)
-                humidite = st.number_input("Humidité relative (%)", min_value=0.0, max_value=100.0, value=75.0, step=0.5)
-                vent = st.number_input("Vitesse vent (km/h)", min_value=0.0, max_value=200.0, value=15.0, step=0.5)
-                ensol = st.number_input("Ensoleillement (h)", min_value=0.0, max_value=14.0, value=6.0, step=0.5)
-
-            submitted_m = st.form_submit_button("💾 Enregistrer le relevé météo", use_container_width=True)
-            if submitted_m:
-                conn = get_conn()
-                conn.execute("""INSERT INTO meteo (date,region,station,temp_min,temp_max,temp_moy,precipitation_mm,humidite_pct,vitesse_vent_kmh,ensoleillement_h)
-                    VALUES (?,?,?,?,?,?,?,?,?,?)""",
-                    (str(date_m), region_m, station, temp_min, temp_max, temp_moy, precipitation, humidite, vent, ensol))
-                conn.commit()
-                conn.close()
-                st.success("✅ Relevé météorologique enregistré avec succès !")
-                st.rerun()
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            date_m = st.date_input("Date du relevé", value=date.today(), key="date_m")
+            region_m = st.selectbox("Région", ["Centre","Littoral","Ouest","Nord","Sud","Adamaoua","Est","Nord-Ouest","Sud-Ouest","Extrême-Nord"], key="reg_m")
+            station = st.text_input("Station météo", placeholder="Ex: Station de Yaoundé", key="station_m")
+        with col2:
+            temp_min = st.number_input("Temp. min (°C)", min_value=-10.0, max_value=50.0, value=20.0, step=0.1, key="tmin")
+            temp_max = st.number_input("Temp. max (°C)", min_value=-10.0, max_value=55.0, value=30.0, step=0.1, key="tmax")
+            temp_moy = st.number_input("Temp. moy (°C)", min_value=-10.0, max_value=55.0, value=25.0, step=0.1, key="tmoy")
+        with col3:
+            precipitation = st.number_input("Précipitations (mm)", min_value=0.0, max_value=500.0, value=50.0, step=0.5, key="prec")
+            humidite = st.number_input("Humidité relative (%)", min_value=0.0, max_value=100.0, value=75.0, step=0.5, key="hum")
+            vent = st.number_input("Vitesse vent (km/h)", min_value=0.0, max_value=200.0, value=15.0, step=0.5, key="vent")
+            ensol = st.number_input("Ensoleillement (h)", min_value=0.0, max_value=14.0, value=6.0, step=0.5, key="ensol")
+        if st.button("💾 Enregistrer le relevé météo", use_container_width=True, key="btn_m"):
+            conn = get_conn()
+            conn.execute("""INSERT INTO meteo (date,region,station,temp_min,temp_max,temp_moy,precipitation_mm,humidite_pct,vitesse_vent_kmh,ensoleillement_h)
+                VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                (str(date_m), region_m, station, temp_min, temp_max, temp_moy, precipitation, humidite, vent, ensol))
+            conn.commit()
+            conn.close()
+            st.success("✅ Relevé météorologique enregistré avec succès !")
+            st.rerun()
 
         if len(df_m) > 0:
             st.markdown('<div class="section-header">Derniers relevés météo</div>', unsafe_allow_html=True)
