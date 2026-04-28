@@ -151,6 +151,7 @@ with st.sidebar:
     page = st.radio("Navigation", [
         "🏠 Tableau de bord",
         "📋 Saisie des données",
+        "🔍 Recherche",
         "📊 Analyse descriptive",
         "📈 Visualisations",
         "💾 Gestion des données"
@@ -327,6 +328,128 @@ elif page == "📋 Saisie des données":
                 df_m[["date","region","station","temp_min","temp_max","precipitation_mm","humidite_pct"]].head(10),
                 use_container_width=True, hide_index=True
             )
+
+
+# ─── PAGE: RECHERCHE ─────────────────────────────────────────────────────────
+elif page == "🔍 Recherche":
+    st.markdown('<h1 class="main-title">Recherche</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="subtitle">Filtrez et explorez les données selon vos critères</p>', unsafe_allow_html=True)
+    st.markdown("---")
+
+    tab_r, tab_m = st.tabs(["🌾 Rendements", "🌦️ Météo"])
+
+    with tab_r:
+        if len(df_r) == 0:
+            st.info("Aucune donnée de rendement disponible.")
+        else:
+            st.markdown('<div class="section-header">Filtres</div>', unsafe_allow_html=True)
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                cultures_dispo = ["Toutes"] + sorted(df_r["culture"].dropna().unique().tolist())
+                filtre_culture = st.selectbox("🌾 Par culture", cultures_dispo)
+            with col2:
+                regions_dispo = ["Toutes"] + sorted(df_r["region"].dropna().unique().tolist())
+                filtre_region = st.selectbox("📍 Par région", regions_dispo)
+            with col3:
+                qualites_dispo = ["Toutes"] + sorted(df_r["qualite"].dropna().unique().tolist())
+                filtre_qualite = st.selectbox("⭐ Par qualité", qualites_dispo)
+            col4, col5 = st.columns(2)
+            with col4:
+                dates_r = pd.to_datetime(df_r["date"], errors="coerce").dropna()
+                date_min_r = dates_r.min().date() if len(dates_r) > 0 else date(2020,1,1)
+                date_max_r = dates_r.max().date() if len(dates_r) > 0 else date.today()
+                filtre_date_debut = st.date_input("📅 Date début", value=date_min_r, key="rd1")
+            with col5:
+                filtre_date_fin = st.date_input("📅 Date fin", value=date_max_r, key="rd2")
+            filtre_mot_cle = st.text_input("📝 Mot-clé dans les remarques", placeholder="Ex: irrigation, pluie, maladie...")
+            df_filtre = df_r.copy()
+            if filtre_culture != "Toutes":
+                df_filtre = df_filtre[df_filtre["culture"] == filtre_culture]
+            if filtre_region != "Toutes":
+                df_filtre = df_filtre[df_filtre["region"] == filtre_region]
+            if filtre_qualite != "Toutes":
+                df_filtre = df_filtre[df_filtre["qualite"] == filtre_qualite]
+            df_filtre["date_parsed"] = pd.to_datetime(df_filtre["date"], errors="coerce")
+            df_filtre = df_filtre[
+                (df_filtre["date_parsed"] >= pd.Timestamp(filtre_date_debut)) &
+                (df_filtre["date_parsed"] <= pd.Timestamp(filtre_date_fin))
+            ]
+            if filtre_mot_cle.strip():
+                df_filtre = df_filtre[df_filtre["remarques"].fillna("").str.contains(filtre_mot_cle, case=False)]
+            st.markdown("---")
+            st.markdown(f'<div class="section-header">Résultats : {len(df_filtre)} enregistrement(s)</div>', unsafe_allow_html=True)
+            if len(df_filtre) == 0:
+                st.warning("Aucun résultat ne correspond à vos critères.")
+            else:
+                cols_affich = ["date","region","culture","superficie_ha","production_tonnes","rendement_t_ha","qualite","remarques"]
+                st.dataframe(df_filtre[cols_affich], use_container_width=True, hide_index=True)
+                col_s1, col_s2, col_s3 = st.columns(3)
+                with col_s1:
+                    st.metric("Rendement moyen", f"{df_filtre['rendement_t_ha'].mean():.2f} t/ha")
+                with col_s2:
+                    st.metric("Production totale", f"{df_filtre['production_tonnes'].sum():.2f} t")
+                with col_s3:
+                    st.metric("Superficie totale", f"{df_filtre['superficie_ha'].sum():.2f} ha")
+                csv_exp = df_filtre.drop(columns=["date_parsed"],errors="ignore").to_csv(index=False).encode("utf-8")
+                st.download_button("📥 Exporter (CSV)", data=csv_exp,
+                    file_name=f"recherche_rendements_{datetime.now().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv")
+
+    with tab_m:
+        if len(df_m) == 0:
+            st.info("Aucune donnée météo disponible.")
+        else:
+            st.markdown('<div class="section-header">Filtres</div>', unsafe_allow_html=True)
+            col1, col2 = st.columns(2)
+            with col1:
+                regions_m = ["Toutes"] + sorted(df_m["region"].dropna().unique().tolist())
+                filtre_region_m = st.selectbox("📍 Par région", regions_m, key="rm")
+            with col2:
+                stations_dispo = ["Toutes"] + sorted(df_m["station"].dropna().unique().tolist())
+                filtre_station = st.selectbox("🏭 Par station", stations_dispo)
+            col3, col4 = st.columns(2)
+            with col3:
+                dates_m2 = pd.to_datetime(df_m["date"], errors="coerce").dropna()
+                date_min_m = dates_m2.min().date() if len(dates_m2) > 0 else date(2020,1,1)
+                date_max_m = dates_m2.max().date() if len(dates_m2) > 0 else date.today()
+                filtre_date_debut_m = st.date_input("📅 Date début", value=date_min_m, key="md1")
+            with col4:
+                filtre_date_fin_m = st.date_input("📅 Date fin", value=date_max_m, key="md2")
+            col5, col6 = st.columns(2)
+            with col5:
+                filtre_temp = st.slider("🌡️ Température moy (°C)", -10.0, 50.0, (-10.0, 50.0))
+            with col6:
+                filtre_precip = st.slider("🌧️ Précipitations (mm)", 0.0, 500.0, (0.0, 500.0))
+            df_filtre_m = df_m.copy()
+            if filtre_region_m != "Toutes":
+                df_filtre_m = df_filtre_m[df_filtre_m["region"] == filtre_region_m]
+            if filtre_station != "Toutes":
+                df_filtre_m = df_filtre_m[df_filtre_m["station"] == filtre_station]
+            df_filtre_m["date_parsed"] = pd.to_datetime(df_filtre_m["date"], errors="coerce")
+            df_filtre_m = df_filtre_m[
+                (df_filtre_m["date_parsed"] >= pd.Timestamp(filtre_date_debut_m)) &
+                (df_filtre_m["date_parsed"] <= pd.Timestamp(filtre_date_fin_m)) &
+                (df_filtre_m["temp_moy"] >= filtre_temp[0]) &
+                (df_filtre_m["temp_moy"] <= filtre_temp[1]) &
+                (df_filtre_m["precipitation_mm"] >= filtre_precip[0]) &
+                (df_filtre_m["precipitation_mm"] <= filtre_precip[1])
+            ]
+            st.markdown("---")
+            st.markdown(f'<div class="section-header">Résultats : {len(df_filtre_m)} relevé(s)</div>', unsafe_allow_html=True)
+            if len(df_filtre_m) == 0:
+                st.warning("Aucun résultat ne correspond à vos critères.")
+            else:
+                cols_m = ["date","region","station","temp_min","temp_max","temp_moy","precipitation_mm","humidite_pct","vitesse_vent_kmh"]
+                st.dataframe(df_filtre_m[cols_m], use_container_width=True, hide_index=True)
+                col_s1, col_s2, col_s3 = st.columns(3)
+                with col_s1:
+                    st.metric("Temp. moyenne", f"{df_filtre_m['temp_moy'].mean():.1f} °C")
+                with col_s2:
+                    st.metric("Précip. moyenne", f"{df_filtre_m['precipitation_mm'].mean():.1f} mm")
+                with col_s3:
+                    st.metric("Humidité moyenne", f"{df_filtre_m['humidite_pct'].mean():.1f} %")
+                csv_m_exp = df_filtre_m.drop(columns=["date_parsed"],errors="ignore").to_csv(index=False).encode("utf-8")
+                st.download_button("📥 Exporter météo (CSV)", data=csv_m_exp,
+                    file_name=f"recherche_meteo_{datetime.now().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv")
 
 # ─── PAGE: ANALYSE DESCRIPTIVE ────────────────────────────────────────────────
 elif page == "📊 Analyse descriptive":
