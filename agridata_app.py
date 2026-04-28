@@ -498,7 +498,7 @@ elif page == "📈 Visualisations":
             st.markdown('<div class="section-header">Nuage de points : superficie vs rendement</div>', unsafe_allow_html=True)
             fig_scatter = px.scatter(df_r, x="superficie_ha", y="rendement_t_ha",
                 color="culture", size="production_tonnes", hover_data=["region","qualite","date"],
-                trendline="ols", template="plotly_white",
+                template="plotly_white",
                 labels={"superficie_ha":"Superficie (ha)","rendement_t_ha":"Rendement (t/ha)","culture":"Culture"},
                 color_discrete_sequence=px.colors.qualitative.Set2)
             fig_scatter.update_layout(margin=dict(t=10,b=20,l=10,r=10), paper_bgcolor="rgba(0,0,0,0)")
